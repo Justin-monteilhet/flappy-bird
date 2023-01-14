@@ -2,6 +2,7 @@ from json.decoder import JSONDecodeError
 from json import loads, dumps, load, dump
 from typing import List
 from random import randrange
+from time import time
 
 import pygame as pg
 import os
@@ -58,12 +59,16 @@ class Game:
 
         self.pipes : List[CouplePipes] = []
         self.speed = self.base_speed = 3
-        self.jumping = False
 
         sounds = {'jump':'jump.wav', 'loose':'loose.wav', 'start':'start.wav', 'background':'background.wav', 'pass':'pass.wav'}
         self.sounds = {name:sound for name, sound in zip(sounds.keys(), [pg.mixer.Sound(os.path.join('ressources', 'sounds', filename)) for filename in sounds.values()])}
 
+    def get_time(self) -> float:
+        return time() - self.start_time
+    
     def run(self):
+        self.start_time = time()
+        
         while self.run :
             events = pg.event.get()
             for event in events:
@@ -108,7 +113,6 @@ class Game:
 
     def keydown_handler(self, key):
         if self.mode == 'menu':
-            print('kd handler')
             self.mode = 'game'
             self.new_pipes()
             self.play_sound('background', loop=True, fade=2000)
@@ -117,8 +121,9 @@ class Game:
 
         if self.mode == 'game':
             if key in (pg.K_SPACE, K_RETURN, K_UP):
-                if not self.jumping : 
-                    self.jumping = self.player.frame_jump()
+                if not self.player.jumping : 
+                    self.player.jump_start = self.get_time(), self.player.position[1]
+                    self.jumping = self.player.jump(self.get_time())
                     self.play_sound('jump')
 
     def new_pipes(self):
@@ -148,7 +153,7 @@ class Game:
                 self.pipe_passed()
                 first_couple.top.passed_by_player = True
 
-        if self.jumping : self.jumping = self.player.frame_jump()
+        if self.player.jumping : self.player.jump(self.get_time())
         else : self.player.gravity()
 
         if self.loosing_conditions():
